@@ -1,16 +1,16 @@
-const bus = require('../routes/bus')
+const bus = require('../routes/buses')
 const booking = require('../routes/booking')
 const seat = require('../routes/seat')
 const route = require('../routes/route')
 const user =  require('../routes/users')
+const auth = require('../routes/auth')
 const express = require('express')
-const auth = require('../middleware/auth')
 
-module.exports = function (app){
+module.exports = function(app){
     app.use(express.json())
-    app.use(express.urlencoded)
-    app.use('/api/v1/user/signup',user)
-    app.use('/api/v1/user/login',auth)
+    // app.use(express.urlencoded)
+    app.use('/api/v1/user',user)
+    app.use('/api/v1/login',auth)
     app.use('/api/v1/route',route)
     app.use('/api.v1/seat', seat)
     app.use('/api/v1/booking', booking)
