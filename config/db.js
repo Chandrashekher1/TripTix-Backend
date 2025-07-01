@@ -1,9 +1,9 @@
 const mongoose = require('mongoose')
-require('dotenv').config
+require('dotenv').config()
 
-const db = mongoose.connect("mongodb://localhost:27017/")
+const db = mongoose.connect('mongodb://localhost:27017/TripTix', {
+    useNewUrlParser: true})
     .then(() => console.log("MongoDB connnected..."))
     .catch((err) => console.log(err.message))
-
 
 module.exports = db
