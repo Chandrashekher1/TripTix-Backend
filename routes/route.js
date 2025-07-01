@@ -9,13 +9,13 @@ router.get('/',async(req,res) => {
         const {origin, destination} = req.query
         if(!origin || !destination) return res.status(400).json({message: "Missing origin or destination."})
         
-        const routes = await Routes.find({origin,destination}).toArray()
+        const routes = await Routes.find({origin,destination})
         if(!routes) return res.status(404).json({message:"No routes found."})
 
         res.json({success:true, data:routes})
     }
     catch(err){
-        res.status(500).json({success:false, message:"Internal Server error.", error: err.details[0].message})
+        res.status(500).json({success:false, message:"Internal Server error.", error: err.message})
     }
 })
 
@@ -38,7 +38,7 @@ router.post('/',[auth,admin],async(req,res) => {
         res.status(200).json({success:true, routeId:routes.insertedId, message:"Routes created successfully."})   
     }
     catch(err){
-        return res.status(500).json({success:true, message:"Internal Server error."})
+        return res.status(500).json({success:true, message:"Internal Server error.", error:err.message})
     }
     
 })
