@@ -3,12 +3,16 @@ const express = require('express')
 const app = express()
 require('dotenv').config()
 
-require('./startup/routes')(app)
-if (!process.env.jwtPrivateKey) {
-    console.error('FATAL ERROR: jwtPrivateKey is not defined.');
-    process.exit(1);
-}
 db
+
+// app.get('/', (req, res) => {
+//     res.send('Welcome to TripTix API')  })
+
+require('./startup/routes')(app)
+
+
 app.listen(3000, () => {
     console.log(`Listening on port 3000...`)
 })
+
+
