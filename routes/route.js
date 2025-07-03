@@ -1,4 +1,4 @@
-const admin = require('../middleware/Admin')
+const admin = require('../middleware/admin')
 const auth = require('../middleware/auth')
 const {Routes} = require('../models/routes')
 const express = require('express')
