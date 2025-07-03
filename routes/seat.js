@@ -1,9 +1,26 @@
-const Seat = require('../models/seat')
+const {Seat} = require('../models/seat')
 const express = require('express')
 const router = express.Router()
-// const { isValidObjectId } = require('mongoose');
 const auth = require('../middleware/auth');
 const { isValidObjectId, Types } = require('mongoose');
+
+router.get('/:id', [auth], async(req,res) => {
+  try{
+    const busId = req.params
+    if(!isValidObjectId(busId)){
+      return res.status(400).json({ error: "Invalid bus ID" });
+    }
+
+    const seats = await Seat.find({busId: new Types.ObjectId(busId)})
+    if(!seats || seats.length === 0) {
+      return res.status(404).json({ message: "No seats found for this bus." });
+    }
+    res.json({success: true, data: seats});
+  }
+  catch(err){
+    res.status(500).json({message: "internal Server error", error:err.message});
+  }
+})
 
 router.post('/', [auth], async (req, res) => {
   try {
@@ -49,7 +66,7 @@ router.post('/', [auth], async (req, res) => {
 });
 
 
-router.patch('/', [auth], async (req, res) => {
+router.patch('/:id', [auth], async (req, res) => {
   try {
     const { busId, seatIds, userId } = req.body;
 
