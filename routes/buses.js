@@ -1,13 +1,14 @@
-const Seat = require('../models/seat')
-const Route = require('../models/routes')
+const {Seat} = require('../models/seat')
+const {Routes} = require('../models/routes')
 const Buses = require('../models/buses')
 const express = require('express')
 const router = express.Router()
+const mongoose = require('mongoose')
 const { Types } = require('mongoose');
+
 const admin = require('../middleware/Admin')
 const auth = require('../middleware/auth')
 const { uploadMultiple } = require('../config/storage')
-
 
 router.get('/' , async(req,res) => {
     try{
@@ -15,7 +16,7 @@ router.get('/' , async(req,res) => {
         if(!origin || !destination || !date){
             return res.status(400).json({message: "Missing required fields: origin, destination, date"})
         }
-        const route = await Route.findOne({origin,destination})
+        const route = await Routes.find({origin,destination})
         if(!route){
             return res.status(404).json({message: "Route not found"})
         }
@@ -36,7 +37,7 @@ router.get('/' , async(req,res) => {
         res.json(buses)
     }
     catch(err){
-        res.status(500).json({success:false, message:"Internal server error."})
+        res.status(500).json({success:false, message:"Internal server error.", error: err.message})
     }
 })
 
@@ -57,15 +58,18 @@ router.get('/:id/seats' , async(req,res) => {
 router.post('/', [auth,admin], uploadMultiple, async(req,res) => {
     try{
         const {routesId,busNumber,busType, operator, dep_time,arrivalTime,isAc, isSleeper,isSeater,price, totalSeat,} = req.body
-        if(!routesId || !busNumber ||!busType ||!operator ||!dep_time ||!arrivalTime || isAc ||!isSeater ||!price ||!price){
+        if(!routesId || !busNumber ||!busType ||!operator ||!dep_time ||!arrivalTime ||!price ||!totalSeat){
             return res.status(400).json({message:"Missing required fields"})
         }
         if (!Types.ObjectId.isValid(routesId)) {
             return res.status(400).json({ message: "Invalid route ID" });
         }
         const image = req.files?.map((image) => image.path)
+        if(!image || image.length === 0) {
+            return res.status(400).json({message: "Please upload at least one image"})
+        }
         let buses = new Buses({
-            routeId:new Types.ObjectId(routesId),
+            routesId:new Types.ObjectId(routesId),
             busNumber,
             busType,
             operator,
@@ -79,21 +83,24 @@ router.post('/', [auth,admin], uploadMultiple, async(req,res) => {
             images:image
         })
         buses = await buses.save()
+        console.log(buses);
+        
         res.status(200).json({success: true, message:"Bus added successfully", data: buses})
     }catch(err){
+        console.error(err);
         return  res.status(500).json({success:false,message: "Internal Server error", error: err.message})
     }
 })
 
-router.patch('/:id', [auth,admin], uploadMultiple, async(req,res) => {
+router.patch('/:id', [auth,admin], async(req,res) => {
     try{
         const {routesId,busNumber,busType, operator, dep_time,arrivalTime,isAc, isSleeper,isSeater,price, totalSeat,} = req.body
         if (!Types.ObjectId.isValid(routesId)) {
             return res.status(400).json({ message: "Invalid route ID" });
         }
         const image = req.files?.map((image) => image.path)
-        let buses =  Buses.findByIdAndUpdate(req.params.id, {
-            routeId:new Types.ObjectId(routesId),
+        let buses = await Buses.findByIdAndUpdate(req.params.id, {
+            routesId:new Types.ObjectId(routesId),
             busNumber,
             busType,
             operator,
@@ -117,13 +124,13 @@ router.patch('/:id', [auth,admin], uploadMultiple, async(req,res) => {
 
 router.delete('/:id', [auth,admin], async(req,res) => {
     try{
-        const bus = Buses.findByIdAndDelete(req.params.id)
+        const bus = await Buses.findByIdAndDelete(req.params.id)
         if(!bus) return res.status(400).json({message: "No bus find with this Id"})
 
         res.send(bus)
     }
     catch(err){
-        return res.status(500).json({success:false, message: "Internal server error"})
+        return res.status(500).json({success:false, message: "Internal server error" , error: err.message})
     }
 })
 
