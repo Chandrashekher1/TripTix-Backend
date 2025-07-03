@@ -3,10 +3,8 @@ const {Routes} = require('../models/routes')
 const Buses = require('../models/buses')
 const express = require('express')
 const router = express.Router()
-const mongoose = require('mongoose')
 const { Types } = require('mongoose');
-
-const admin = require('../middleware/Admin')
+const admin = require('../middleware/admin')
 const auth = require('../middleware/auth')
 const { uploadMultiple } = require('../config/storage')
 
