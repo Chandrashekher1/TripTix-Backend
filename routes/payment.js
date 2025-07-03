@@ -111,3 +111,5 @@ router.post('/verify', [auth], async(req,res) => {
         res.status(400).json({success: false, message:"Internal server error", error: err.message})
     }
 })
+
+module.exports = router
