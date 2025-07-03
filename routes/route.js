@@ -25,7 +25,7 @@ router.post('/',[auth,admin],async(req,res) => {
         const {origin,destination,distance} = req.body
         if(!origin || !destination || !distance) return res.status(400).json({message: "Missing or invalid fields: origin,destination,distance"})
         
-        const existingRoute = await Routes.findOne('origin,destination')
+        const existingRoute = await Routes.find({origin,destination})
         if(!existingRoute) return res.status(409).json({message: "Route already exists"})
         
         let routes = new Routes({
@@ -38,7 +38,7 @@ router.post('/',[auth,admin],async(req,res) => {
         res.status(200).json({success:true, routeId:routes.insertedId, message:"Routes created successfully."})   
     }
     catch(err){
-        return res.status(500).json({success:true, message:"Internal Server error.", error:err.message})
+        return res.status(500).json({success:false, message:"Internal Server error.", error:err.message})
     }
     
 })
