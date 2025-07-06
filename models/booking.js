@@ -1,3 +1,4 @@
+const { required } = require('joi')
 const mongoose = require('mongoose')
 
 const BookingSchema = mongoose.Schema({
@@ -20,25 +21,30 @@ const BookingSchema = mongoose.Schema({
         {
             name:{
                 type:String,
-                required: true
+                required: true,
+                lowercase:true
             },
             age:{
                 type: String,
-                required: true
+                required: true,
+                lowercase:true
             },
             gender: {
                 type: String,
-                required: true
+                required: true,
+                lowercase:true
             },
             seatPreference: {
                 type: String,
-                required: true
+                required: true,
+                lowercase: true
             }
         },
        
     ],
      status: {
-        type: String
+        type: String,
+        lowercase:true
     },
     createAt:{
         type: Date,
