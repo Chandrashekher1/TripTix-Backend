@@ -3,11 +3,13 @@ const mongoose = require('mongoose')
 const RoutesSchema = mongoose.Schema({
     origin: {
         type: String,
-        required: true
+        required: true,
+        lowercase:true
     },
     destination: {
         type: String,
-        required: true
+        required: true,
+        lowercase: true
     },
     distance: {
         type: Number,
