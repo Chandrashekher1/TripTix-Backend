@@ -3,6 +3,7 @@ const express = require('express')
 const router = express.Router()
 const auth = require('../middleware/auth');
 const { isValidObjectId, Types } = require('mongoose');
+const admin = require('../middleware/admin');
 
 router.get('/:id', [auth], async(req,res) => {
   try{
@@ -64,6 +65,8 @@ router.post('/', [auth], async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
+
 
 
 router.patch('/:id', [auth], async (req, res) => {

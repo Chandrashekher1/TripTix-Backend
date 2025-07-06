@@ -11,19 +11,15 @@ const { uploadMultiple } = require('../config/storage')
 router.get('/' , async(req,res) => {
     try{
         const {origin, destination, date} = req.query
-        if(!origin || !destination || !date){
+        if(!origin || !destination ){
             return res.status(400).json({message: "Missing required fields: origin, destination, date"})
         }
-        const route = await Routes.find({origin,destination})
+        const route = await Routes.findOne({origin,destination})
         if(!route){
             return res.status(404).json({message: "Route not found"})
         }
-        const startOfDay = new Date(date)
-        const endOfDay = new Date(startOfDay.getTime() + 24*60*60*1000-1)
-
         const buses = await Buses.find({
-            routeId: route._id,
-            dept_time: {$gte: startOfDay, $lte: endOfDay}
+            routesId: route._id,
         })
 
         for(const bus of buses){
@@ -63,9 +59,9 @@ router.post('/', [auth,admin], uploadMultiple, async(req,res) => {
             return res.status(400).json({ message: "Invalid route ID" });
         }
         const image = req.files?.map((image) => image.path)
-        if(!image || image.length === 0) {
-            return res.status(400).json({message: "Please upload at least one image"})
-        }
+        // if(!image || image.length === 0) {
+        //     return res.status(400).json({message: "Please upload at least one image"})
+        // }
         let buses = new Buses({
             routesId:new Types.ObjectId(routesId),
             busNumber,
@@ -78,7 +74,7 @@ router.post('/', [auth,admin], uploadMultiple, async(req,res) => {
             totalSeat,
             dep_time:new Date(dep_time),
             arrivalTime: new Date(arrivalTime),
-            images:image
+            // images:image
         })
         buses = await buses.save()
         console.log(buses);
