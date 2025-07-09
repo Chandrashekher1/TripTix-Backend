@@ -1,4 +1,3 @@
-const { required } = require('joi')
 const mongoose = require('mongoose')
 
 const BusSchema = mongoose.Schema({
@@ -26,6 +25,10 @@ const BusSchema = mongoose.Schema({
         type: Boolean,
         required: true
     },
+    isWifi: {
+        type: Boolean,
+        required: true
+    },
     price: {
         type: Number,
         required: true
@@ -38,6 +41,10 @@ const BusSchema = mongoose.Schema({
         type: String,
         required: true
     },
+    busNumber:{
+        type:String,
+        required:true
+    },
     routesId:{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Routes',
@@ -47,6 +54,11 @@ const BusSchema = mongoose.Schema({
     date: {
         type: Date,
         default: Date.now,
+    },
+    rating:{
+        type: Number,
+        default: 1,
+        required: true
     },
     createdAt: {
         type: Date,
