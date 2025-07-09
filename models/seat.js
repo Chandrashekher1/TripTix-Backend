@@ -1,4 +1,3 @@
-const { required, ref, date } = require('joi')
 const mongoose = require('mongoose')
 
 const SeatSchema = mongoose.Schema({
@@ -8,15 +7,17 @@ const SeatSchema = mongoose.Schema({
     },
     status: {
         type: String,
-        required: true
+        required: true,
+        lowercase:true
     },
     lockedUntil: {
-        type: String,
-        required: true
+        type: Date,
+        default:null
     },
     seatPreference: {
         type: String,
-        required: true
+        required: true,
+        lowercase: true
     },
     busId: {
         type: mongoose.Schema.Types.ObjectId,
