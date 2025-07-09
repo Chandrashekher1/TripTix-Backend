@@ -7,12 +7,12 @@ const admin = require('../middleware/admin');
 
 router.get('/:id', [auth], async(req,res) => {
   try{
-    const busId = req.params
+    const busId = req.params.id
     if(!isValidObjectId(busId)){
       return res.status(400).json({ error: "Invalid bus ID" });
     }
 
-    const seats = await Seat.find({busId: new Types.ObjectId(busId)})
+    const seats = await Seat.find({busId: busId})
     if(!seats || seats.length === 0) {
       return res.status(404).json({ message: "No seats found for this bus." });
     }
@@ -23,14 +23,15 @@ router.get('/:id', [auth], async(req,res) => {
   }
 })
 
-router.post('/', [auth], async (req, res) => {
+router.post('/locked', [auth], async (req, res) => {
   try {
-    const { busId, seatIds, userId } = req.body;
+    const { busId, seatIds } = req.body;
+    const userId = req.user._id;
 
     if (
       !isValidObjectId(busId) ||
       !Array.isArray(seatIds) ||
-      !seatIds.every(id => isValidObjectId(id)) ||
+      !seatIds.every(id => isValidObjectId(id)) || 
       !isValidObjectId(userId)
     ) {
       return res.status(400).json({ error: "Invalid bus, seat, or user ID" });
@@ -45,7 +46,6 @@ router.post('/', [auth], async (req, res) => {
     if (seats.length !== seatIds.length) {
       return res.status(409).json({ message: "Some seats are unavailable." });
     }
-
     await Seat.updateMany(
       {
         _id: { $in: seatIds.map(id => new Types.ObjectId(id)) }
@@ -64,14 +64,36 @@ router.post('/', [auth], async (req, res) => {
     console.error(err);
     res.status(500).json({ message: "Internal server error" });
   }
+})
+
+router.post('/add', [auth, admin], async (req, res) => {
+  try {
+    const { seatNumber, status, seatPreference, busId, userId } = req.body;
+
+    if (!seatNumber || !status || !seatPreference || !busId || !userId) {
+      return res.status(400).json({ message: "Missing required fields." });
+    }
+
+    const seat = new Seat({
+      seatNumber,
+      status,
+      seatPreference,
+      busId,
+      userId
+    });
+
+    await seat.save();
+    res.status(201).json({ message: "Seat created successfully", seat });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
-
-
 
 
 router.patch('/:id', [auth], async (req, res) => {
   try {
-    const { busId, seatIds, userId } = req.body;
+    const { busId, seatIds } = req.body;
+    const userId = req.user._id;
 
     if (
       !isValidObjectId(busId) ||
