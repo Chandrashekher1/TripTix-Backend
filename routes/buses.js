@@ -8,6 +8,18 @@ const admin = require('../middleware/admin')
 const auth = require('../middleware/auth')
 const { uploadMultiple } = require('../config/storage')
 
+router.get('/topRated' , async(req,res) => {
+    try{
+        const bus = await Buses.find().populate('routesId')
+        if(!bus){
+            return res.status(404).json({message: "Route not found"})
+        }
+        res.json(bus)
+    }
+    catch(err){
+        res.status(500).json({success:false, message:"Internal server error.", error: err.message})
+    }
+})
 router.get('/' , async(req,res) => {
     try{
         const {origin, destination, date} = req.query
@@ -35,13 +47,13 @@ router.get('/' , async(req,res) => {
     }
 })
 
-router.get('/:id/seats' , async(req,res) => {
+router.get('/:id' , async(req,res) => {
     try{
         const busId = req.params.id
         if(!Types.ObjectId.isValid(busId)){
             return res.status(400).json({message: "Invalid bus ID"})
         }
-        const seats = await Seat.find({busId: new ObjectId(busId)})
+        const seats = await Buses.findById(busId).populate('routesId')
         res.json(seats)
     }
     catch(err){
@@ -51,7 +63,7 @@ router.get('/:id/seats' , async(req,res) => {
 
 router.post('/', [auth,admin], uploadMultiple, async(req,res) => {
     try{
-        const {routesId,busNumber,busType, operator, dep_time,arrivalTime,isAc, isSleeper,isSeater,price, totalSeat,} = req.body
+        const {routesId,busNumber,busType, operator, dep_time,arrivalTime,isAc, isSleeper,isSeater,price, totalSeat,rating,isWifi} = req.body
         if(!routesId || !busNumber ||!busType ||!operator ||!dep_time ||!arrivalTime ||!price ||!totalSeat){
             return res.status(400).json({message:"Missing required fields"})
         }
@@ -70,8 +82,10 @@ router.post('/', [auth,admin], uploadMultiple, async(req,res) => {
             isAc,
             isSeater,
             isSleeper,
+            isWifi,
             price:parseFloat(price) ,
             totalSeat,
+            rating: parseFloat(rating) || 1,
             dep_time:new Date(dep_time),
             arrivalTime: new Date(arrivalTime),
             // images:image
