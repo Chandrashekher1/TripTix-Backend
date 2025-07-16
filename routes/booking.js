@@ -1,48 +1,29 @@
-const auth = require('../middleware/auth');
 const express = require('express');
-const { Seat } = require('../models/seat');
-const { Types } = require('mongoose');
-const ObjectId = Types.ObjectId;
-
 const router = express.Router();
+const { Booking } = require('../models/booking');
+const auth = require('../middleware/auth');
 
-router.post('/', auth, async (req, res) => {
+router.post('/book', auth, async (req, res) => {
   try {
-    const { busId, seatIds, userId, passengerDetails } = req.body;
+    const { userId, busId, passengerDetails, seatIds } = req.body;
 
-    if (
-      !ObjectId.isValid(busId) ||
-      !Array.isArray(seatIds) ||
-      !seatIds.every(id => ObjectId.isValid(id)) ||
-      !ObjectId.isValid(userId)
-    ) {
-      return res.status(400).json({ message: "Invalid bus, seat, or user ID" });
+    if (!userId || !busId || !passengerDetails?.length || !seatIds?.length) {
+      return res.status(400).json({ success: false, message: 'Missing fields' });
     }
 
-    if (!Array.isArray(passengerDetails) || passengerDetails.length !== seatIds.length) {
-      return res.status(400).json({ message: "Invalid passenger details." });
-    }
-
-    for (const passenger of passengerDetails) {
-      if (!passenger.name || !passenger.age || !passenger.gender) {
-        return res.status(400).json({ message: "Missing passenger details." });
-      }
-    }
-
-    const seats = await Seat.find({
-      _id: { $in: seatIds.map(id => new ObjectId(id)) },
-      busId: new ObjectId(busId),
-      userId: new ObjectId(userId),
-      status: "locked"
+    const booking = new Booking({
+      userId,
+      busId,
+      passengerDetails,
+      seatIds
     });
 
-    if (seats.length !== seatIds.length) {
-      return res.status(409).json({ message: "Invalid seat lock." });
-    }
+    await booking.save();
 
-    res.json({ success: true, data: seats });
+    res.status(201).json({ success: true, message: 'Booking confirmed', booking });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Internal error", error: err.message });
+    console.error(err.message);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
