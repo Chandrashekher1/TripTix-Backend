@@ -17,7 +17,7 @@ const handleSocketConnection = (io) => {
           $set: {
             status: 'locked',
             userId: new Types.ObjectId(userId),
-            lockedUntil: new Date(Date.now() + 5 * 60 * 1000)
+            lockedUntil: new Date(Date.now() + 1 * 60 * 1000)
           }
         }
       )
