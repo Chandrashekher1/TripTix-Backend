@@ -1,5 +1,5 @@
 const chatBot = require('../routes/chatbot')
-// const payment = require('../routes/payment')
+const payment = require('../routes/payment')
 const bus = require('../routes/buses')
 const booking = require('../routes/booking')
 const seat = require('../routes/seat')
@@ -17,6 +17,6 @@ module.exports = function(app){
     app.use('/api/v1/seat', seat)
     app.use('/api/v1/booking', booking)
     app.use('/api/v1/bus',bus)
-    // app.use('/api/v1/payment',payment)
+    app.use('/api/v1/payment',payment)
     app.use('/api/chatbot',chatBot)
 }
