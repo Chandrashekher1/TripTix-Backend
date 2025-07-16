@@ -23,49 +23,6 @@ router.get('/:id', [auth], async(req,res) => {
   }
 })
 
-router.post('/locked', [auth], async (req, res) => {
-  try {
-    const { busId, seatIds } = req.body;
-    const userId = req.user._id;
-
-    if (
-      !isValidObjectId(busId) ||
-      !Array.isArray(seatIds) ||
-      !seatIds.every(id => isValidObjectId(id)) || 
-      !isValidObjectId(userId)
-    ) {
-      return res.status(400).json({ error: "Invalid bus, seat, or user ID" });
-    }
-
-    const seats = await Seat.find({
-      _id: { $in: seatIds.map(id => new Types.ObjectId(id)) },
-      busId: new Types.ObjectId(busId),
-      status: "available"
-    });
-
-    if (seats.length !== seatIds.length) {
-      return res.status(409).json({ message: "Some seats are unavailable." });
-    }
-    await Seat.updateMany(
-      {
-        _id: { $in: seatIds.map(id => new Types.ObjectId(id)) }
-      },
-      {
-        $set: {
-          status: "locked",
-          userId: new Types.ObjectId(userId),
-          lockedUntil: new Date(Date.now() + 5 * 60 * 1000)
-        }
-      }
-    );
-
-    res.json({ message: "Seats locked successfully." });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Internal server error" });
-  }
-})
-
 router.post('/add', [auth, admin], async (req, res) => {
   try {
     const { seatNumber, status, seatPreference, busId, userId } = req.body;
@@ -90,48 +47,48 @@ router.post('/add', [auth, admin], async (req, res) => {
 });
 
 
-router.patch('/:id', [auth], async (req, res) => {
-  try {
-    const { busId, seatIds } = req.body;
-    const userId = req.user._id;
+// router.patch('/:id', [auth], async (req, res) => {
+//   try {
+//     const { busId, seatIds } = req.body;
+//     const userId = req.user._id;
 
-    if (
-      !isValidObjectId(busId) ||
-      !seatIds.every(id => isValidObjectId(id)) ||
-      !isValidObjectId(userId)
-    ) {
-      return res.status(400).json({ error: "Invalid bus, seat, or user ID" });
-    }
+//     if (
+//       !isValidObjectId(busId) ||
+//       !seatIds.every(id => isValidObjectId(id)) ||
+//       !isValidObjectId(userId)
+//     ) {
+//       return res.status(400).json({ error: "Invalid bus, seat, or user ID" });
+//     }
 
-    const seats = await Seat.find({
-      _id: { $in: seatIds.map(id => new Types.ObjectId(id)) },
-      busId: new Types.ObjectId(busId),
-      status: "available"
-    });
+//     const seats = await Seat.find({
+//       _id: { $in: seatIds.map(id => new Types.ObjectId(id)) },
+//       busId: new Types.ObjectId(busId),
+//       status: "available"
+//     });
 
-    if (seats.length !== seatIds.length) {
-      return res.status(409).json({ message: "Some seats are unavailable." });
-    }
+//     if (seats.length !== seatIds.length) {
+//       return res.status(409).json({ message: "Some seats are unavailable." });
+//     }
 
-    await Seat.updateMany(
-      {
-        _id: { $in: seatIds.map(id => new Types.ObjectId(id)) }
-      },
-      {
-        $set: {
-          status: "locked",
-          userId: new Types.ObjectId(userId),
-          lockedUntil: new Date(Date.now() + 5 * 60 * 1000)
-        }
-      }
-    );
+//     await Seat.updateMany(
+//       {
+//         _id: { $in: seatIds.map(id => new Types.ObjectId(id)) }
+//       },
+//       {
+//         $set: {
+//           status: "locked",
+//           userId: new Types.ObjectId(userId),
+//           lockedUntil: new Date(Date.now() + 5 * 60 * 1000)
+//         }
+//       }
+//     );
 
-    res.json({ message: "Seats locked successfully." });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
+//     res.json({ message: "Seats locked successfully." });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// });
 
 module.exports = router;
 
