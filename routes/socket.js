@@ -40,7 +40,7 @@ const handleSocketConnection = (io) => {
 
         )
         io.emit('seatsUpdated', { seatIds, status: 'available' });
-      },1*60*1000)
+      },5*60*1000)
 
     });
 
