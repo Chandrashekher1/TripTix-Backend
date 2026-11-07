@@ -1,8 +1,11 @@
 {
   "name": "triptix",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -26,11 +29,21 @@
     "mongoose": "^8.16.1",
     "multer": "^2.0.1",
     "multer-storage-cloudinary": "^4.0.0",
-    "nodemon": "^3.1.10",
+    "nodemon": "^3.1.14",
     "openai": "^5.9.0",
     "razorpay": "^2.9.6",
     "salt": "^0.5.5",
     "socket.io": "^4.8.1",
     "websocket": "^1.0.35"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.6",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2"
   }
 }
