@@ -36,11 +36,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Users = void 0;
-exports.validateUser = validateUser;
+exports.validateUserUpdate = exports.validateUser = exports.validateSignup = exports.Users = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const joi_1 = __importDefault(require("joi"));
 const UserSchema = new mongoose_1.Schema({
     name: {
         type: String,
@@ -73,14 +71,9 @@ UserSchema.methods.generateAuthToken = function () {
     const token = jsonwebtoken_1.default.sign({ _id: this._id }, process.env.jwtPrivateKey);
     return token;
 };
-function validateUser(user) {
-    const schema = joi_1.default.object({
-        name: joi_1.default.string().min(3).max(200).required(),
-        email: joi_1.default.string().required(),
-        password: joi_1.default.string().min(5).max(1024).required(),
-        phone: joi_1.default.number().required(),
-    });
-    return schema.validate(user);
-}
 exports.Users = mongoose_1.default.model('users', UserSchema);
+var user_1 = require("../validations/user");
+Object.defineProperty(exports, "validateSignup", { enumerable: true, get: function () { return user_1.validateSignup; } });
+Object.defineProperty(exports, "validateUser", { enumerable: true, get: function () { return user_1.validateUser; } });
+Object.defineProperty(exports, "validateUserUpdate", { enumerable: true, get: function () { return user_1.validateUserUpdate; } });
 //# sourceMappingURL=users.js.map

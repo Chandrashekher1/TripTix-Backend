@@ -30,16 +30,18 @@ router.get('/', async (req, res) => {
     try {
         const { origin, destination } = req.query;
         if (!origin || !destination) {
-            return res.status(400).json({ message: 'Missing required fields: origin, destination, date' });
+            return res.status(400).json({ message: 'Missing required fields: origin, destination' });
         }
-        const route = await routes_1.Routes.findOne({ origin, destination });
+        const normalizedOrigin = origin.trim().toLowerCase();
+        const normalizedDestination = destination.trim().toLowerCase();
+        const route = await routes_1.Routes.findOne({ origin: normalizedOrigin, destination: normalizedDestination });
         if (!route)
             return res.status(404).json({ message: 'Route not found' });
-        const rawBuses = await buses_1.default.find({ routesId: route._id });
-        const buses = rawBuses;
-        for (const bus of buses) {
+        const rawBuses = await buses_1.default.find({ routesId: route._id }).populate('routesId');
+        const buses = rawBuses.map((bus) => bus.toObject());
+        await Promise.all(buses.map(async (bus) => {
             bus.availableSeats = await seat_1.Seat.countDocuments({ busId: bus._id, status: 'available' });
-        }
+        }));
         return res.json(buses);
     }
     catch (err) {

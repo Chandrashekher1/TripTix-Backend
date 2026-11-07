@@ -27,18 +27,23 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const { origin, destination } = req.query as { origin?: string; destination?: string }
     if (!origin || !destination) {
-      return res.status(400).json({ message: 'Missing required fields: origin, destination, date' })
+      return res.status(400).json({ message: 'Missing required fields: origin, destination' })
     }
 
-    const route = await Routes.findOne({ origin, destination })
+    const normalizedOrigin = origin.trim().toLowerCase()
+    const normalizedDestination = destination.trim().toLowerCase()
+
+    const route = await Routes.findOne({ origin: normalizedOrigin, destination: normalizedDestination })
     if (!route) return res.status(404).json({ message: 'Route not found' })
 
-    const rawBuses = await BusModel.find({ routesId: route._id })
-    const buses = rawBuses as (typeof rawBuses[0] & { availableSeats?: number })[]
+    const rawBuses = await BusModel.find({ routesId: route._id }).populate('routesId')
+    const buses = rawBuses.map((bus) => bus.toObject() as typeof bus & { availableSeats?: number })
 
-    for (const bus of buses) {
-      bus.availableSeats = await Seat.countDocuments({ busId: bus._id, status: 'available' })
-    }
+    await Promise.all(
+      buses.map(async (bus) => {
+        bus.availableSeats = await Seat.countDocuments({ busId: bus._id, status: 'available' })
+      })
+    )
 
     return res.json(buses)
   } catch (err) {

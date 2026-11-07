@@ -1,7 +1,8 @@
 import express, { Response } from 'express'
 import bcrypt from 'bcrypt'
 import auth from '../middleware/auth'
-import { Users, validateUser } from '../models/users'
+import { Users } from '../models/users'
+import { validateSignup, validateUserUpdate } from '../validations/user'
 import { AuthRequest } from '../types'
 
 const router = express.Router()
@@ -31,7 +32,7 @@ router.get('/user/:id', auth, async (req: AuthRequest, res: Response) => {
 // POST /signup — register new user
 router.post('/signup', async (req: AuthRequest, res: Response) => {
   try {
-    const { error } = validateUser(req.body)
+    const { error } = validateSignup(req.body)
     if (error) return res.status(400).json({ message: error.details[0].message })
 
     const existingUser = await Users.findOne({ email: req.body.email })
@@ -55,7 +56,6 @@ router.post('/signup', async (req: AuthRequest, res: Response) => {
       success: true,
       token,
       message: 'User registered successfully.',
-      data: user,
     })
   } catch (error) {
     const err = error as Error
@@ -66,7 +66,7 @@ router.post('/signup', async (req: AuthRequest, res: Response) => {
 // PUT /:id — full update user
 router.put('/:id', auth, async (req: AuthRequest, res: Response) => {
   try {
-    const { error } = validateUser(req.body)
+    const { error } = validateUserUpdate(req.body)
     if (error) {
       return res.status(400).json({ success: false, message: error.details[0].message })
     }
@@ -112,4 +112,3 @@ router.patch('/:id', auth, async (req: AuthRequest, res: Response) => {
 })
 
 export default router
-

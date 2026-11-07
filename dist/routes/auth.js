@@ -5,20 +5,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const joi_1 = __importDefault(require("joi"));
 const users_1 = require("../models/users");
+const auth_1 = require("../validations/auth");
 const router = express_1.default.Router();
-function validate(user) {
-    const schema = joi_1.default.object({
-        email: joi_1.default.string().email().min(0).max(2000).required(),
-        password: joi_1.default.string().required(),
-    });
-    return schema.validate(user);
-}
 // POST / — login
 router.post('/', async (req, res) => {
     try {
-        const { error } = validate(req.body);
+        const { error } = (0, auth_1.validateAuth)(req.body);
         if (error)
             return res.status(400).send(error.details[0].message);
         const user = await users_1.Users.findOne({ email: req.body.email });
@@ -28,7 +21,12 @@ router.post('/', async (req, res) => {
         if (!validPassword)
             return res.status(400).json({ message: 'Invalid Password' });
         const token = user.generateAuthToken();
-        return res.header('Authorization', token).send(user);
+        return res.header('Authorization', token).json({
+            _id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone
+        });
     }
     catch (err) {
         const error = err;

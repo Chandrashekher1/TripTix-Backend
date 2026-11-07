@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const auth_1 = __importDefault(require("../middleware/auth"));
 const users_1 = require("../models/users");
+const user_1 = require("../validations/user");
 const router = express_1.default.Router();
 // GET /me — current user profile
 router.get('/me', auth_1.default, async (req, res) => {
@@ -33,7 +34,7 @@ router.get('/user/:id', auth_1.default, async (req, res) => {
 // POST /signup — register new user
 router.post('/signup', async (req, res) => {
     try {
-        const { error } = (0, users_1.validateUser)(req.body);
+        const { error } = (0, user_1.validateSignup)(req.body);
         if (error)
             return res.status(400).json({ message: error.details[0].message });
         const existingUser = await users_1.Users.findOne({ email: req.body.email });
@@ -54,7 +55,6 @@ router.post('/signup', async (req, res) => {
             success: true,
             token,
             message: 'User registered successfully.',
-            data: user,
         });
     }
     catch (error) {
@@ -65,7 +65,7 @@ router.post('/signup', async (req, res) => {
 // PUT /:id — full update user
 router.put('/:id', auth_1.default, async (req, res) => {
     try {
-        const { error } = (0, users_1.validateUser)(req.body);
+        const { error } = (0, user_1.validateUserUpdate)(req.body);
         if (error) {
             return res.status(400).json({ success: false, message: error.details[0].message });
         }
