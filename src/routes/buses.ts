@@ -10,6 +10,12 @@ import { AuthRequest } from '../types'
 
 const router = express.Router()
 
+function normalizeBoolean(value: unknown): boolean | undefined {
+  if (value === true || value === 'true') return true
+  if (value === false || value === 'false') return false
+  return undefined
+}
+
 // GET /topRated — all buses with routes populated
 router.get('/topRated', async (_req: AuthRequest, res: Response) => {
   try {
@@ -46,6 +52,16 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     )
 
     return res.json(buses)
+  } catch (err) {
+    const error = err as Error
+    return res.status(500).json({ success: false, message: 'Internal server error.', error: error.message })
+  }
+})
+
+router.get('/admin/all', [auth, admin], async (_req: AuthRequest, res: Response) => {
+  try {
+    const buses = await BusModel.find().populate('routesId')
+    return res.json({ success: true, data: buses })
   } catch (err) {
     const error = err as Error
     return res.status(500).json({ success: false, message: 'Internal server error.', error: error.message })
@@ -89,8 +105,8 @@ router.post('/', [auth, admin], uploadMultiple, async (req: AuthRequest, res: Re
     let bus = new BusModel({
       routesId: new Types.ObjectId(routesId),
       busNumber, busType, operator,
-      isAc: isAc === 'true', isSeater: isSeater === 'true',
-      isSleeper: isSleeper === 'true', isWifi: isWifi === 'true',
+      isAc: normalizeBoolean(isAc) ?? false, isSeater: normalizeBoolean(isSeater) ?? false,
+      isSleeper: normalizeBoolean(isSleeper) ?? false, isWifi: normalizeBoolean(isWifi) ?? false,
       price: parseFloat(price),
       totalSeat,
       rating: parseFloat(rating) || 1,
@@ -112,34 +128,53 @@ router.post('/', [auth, admin], uploadMultiple, async (req: AuthRequest, res: Re
 // PATCH /:id — update bus (admin)
 router.patch('/:id', [auth, admin], async (req: AuthRequest, res: Response) => {
   try {
-    const {
-      routesId, busNumber, busType, operator, dep_time,
-      arrivalTime, isAc, isSleeper, isSeater, price, totalSeat,
-    } = req.body as Record<string, string>
-
-    if (routesId && !Types.ObjectId.isValid(routesId)) {
-      return res.status(400).json({ message: 'Invalid route ID' })
+    const busId = req.params.id as string
+    if (!Types.ObjectId.isValid(busId)) {
+      return res.status(400).json({ message: 'Invalid bus ID' })
     }
 
-    const files = req.files as Express.Multer.File[] | undefined
-    const image = files?.map((f) => f.path)
+    const body = req.body as Record<string, unknown>
+    const update: Record<string, unknown> = {}
 
-    const bus = await BusModel.findByIdAndUpdate(
-      req.params.id,
-      {
-        routesId: routesId ? new Types.ObjectId(routesId) : undefined,
-        busNumber, busType, operator,
-        isAc: isAc === 'true', isSeater: isSeater === 'true', isSleeper: isSleeper === 'true',
-        price: parseFloat(price),
-        totalSeat,
-        dep_time: new Date(dep_time),
-        arrivalTime: new Date(arrivalTime),
-        images: image,
-      },
-      { new: true }
-    )
+    if (body.routesId !== undefined) {
+      if (typeof body.routesId !== 'string' || !Types.ObjectId.isValid(body.routesId)) {
+        return res.status(400).json({ message: 'Invalid route ID' })
+      }
+      update.routesId = new Types.ObjectId(body.routesId)
+    }
 
-    if (!bus) return res.status(400).json({ message: 'Something went wrong.' })
+    for (const field of ['busNumber', 'busType', 'operator', 'totalSeat']) {
+      if (body[field] !== undefined) update[field] = body[field]
+    }
+
+    for (const field of ['isAc', 'isSeater', 'isSleeper', 'isWifi']) {
+      if (body[field] !== undefined) {
+        const value = normalizeBoolean(body[field])
+        if (value === undefined) return res.status(400).json({ message: `Invalid ${field} value` })
+        update[field] = value
+      }
+    }
+
+    if (body.price !== undefined) {
+      const price = typeof body.price === 'number' ? body.price : Number(body.price)
+      if (!Number.isFinite(price)) return res.status(400).json({ message: 'Invalid price' })
+      update.price = price
+    }
+
+    for (const field of ['dep_time', 'arrivalTime']) {
+      if (body[field] !== undefined) {
+        const date = new Date(String(body[field]))
+        if (Number.isNaN(date.getTime())) return res.status(400).json({ message: `Invalid ${field}` })
+        update[field] = date
+      }
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ message: 'No valid fields provided for update' })
+    }
+
+    const bus = await BusModel.findByIdAndUpdate(busId, update, { new: true, runValidators: true })
+    if (!bus) return res.status(404).json({ message: 'No bus found with this ID' })
     return res.status(200).json({ success: true, message: 'Bus updated successfully', data: bus })
   } catch (err) {
     const error = err as Error
@@ -152,6 +187,7 @@ router.delete('/:id', [auth, admin], async (req: AuthRequest, res: Response) => 
   try {
     const bus = await BusModel.findByIdAndDelete(req.params.id)
     if (!bus) return res.status(400).json({ message: 'No bus found with this Id' })
+    console.log(bus)
     return res.send(bus)
   } catch (err) {
     const error = err as Error

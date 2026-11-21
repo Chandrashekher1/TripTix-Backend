@@ -1,12 +1,13 @@
 import mongoose, { Document, Schema, Model, Types } from 'mongoose'
 
+
 export interface ISeat extends Document {
   seatNumber: string
-  status: string
-  lockedUntil: Date | null
+  status?: string
+  lockedUntil?: Date | null
   seatPreference: string
   busId: Types.ObjectId
-  userId: Types.ObjectId | null
+  userId?: Types.ObjectId | null
   date: Date
   createdAt: Date
   updatedAt: Date
@@ -14,7 +15,7 @@ export interface ISeat extends Document {
 
 const SeatSchema = new Schema<ISeat>({
   seatNumber: { type: String, required: true },
-  status: { type: String, required: true, lowercase: true },
+  status: { type: String, lowercase: true },
   lockedUntil: { type: Date, default: null },
   seatPreference: { type: String, required: true, lowercase: true },
   busId: { type: Schema.Types.ObjectId, required: true, ref: 'Buses' },
@@ -23,6 +24,8 @@ const SeatSchema = new Schema<ISeat>({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 })
+
+SeatSchema.index({ busId: 1, seatNumber: 1 }, { unique: true })
 
 export const Seat: Model<ISeat> = mongoose.model<ISeat>('Seat', SeatSchema)
 

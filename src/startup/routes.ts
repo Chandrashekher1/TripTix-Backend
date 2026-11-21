@@ -5,6 +5,7 @@ import bus from '../routes/buses'
 import booking from '../routes/booking'
 import seat from '../routes/seat'
 import route from '../routes/route'
+import trip from '../routes/trip'
 import user from '../routes/users'
 import auth from '../routes/auth'
 
@@ -15,6 +16,7 @@ export default function (app: Application): void {
   app.use('/api/v1/login', auth)
   app.use('/api/v1/route', route)
   app.use('/api/v1/seat', seat)
+  app.use('/api/v1/trip', trip)
   app.use('/api/v1/booking', booking)
   app.use('/api/v1/bus', bus)
   app.use('/api/v1/payment', payment)

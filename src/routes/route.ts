@@ -6,6 +6,16 @@ import { AuthRequest } from '../types'
 
 const router = express.Router()
 
+router.get('/all', async (_req: AuthRequest, res: Response) => {
+  try {
+    const routes = await Routes.find().sort({ origin: 1, destination: 1 })
+    return res.json({ success: true, data: routes })
+  } catch (err) {
+    const error = err as Error
+    return res.status(500).json({ success: false, message: 'Internal Server error.', error: error.message })
+  }
+})
+
 // GET / — find route by origin and destination
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
@@ -18,6 +28,16 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     if (!route) return res.status(404).json({ message: 'No routes found.' })
 
     return res.json({ success: true, data: route })
+  } catch (err) {
+    const error = err as Error
+    return res.status(500).json({ success: false, message: 'Internal Server error.', error: error.message })
+  }
+})
+
+router.get('/admin/all', [auth, admin], async (_req: AuthRequest, res: Response) => {
+  try {
+    const routes = await Routes.find().sort({ origin: 1, destination: 1 })
+    return res.json({ success: true, data: routes })
   } catch (err) {
     const error = err as Error
     return res.status(500).json({ success: false, message: 'Internal Server error.', error: error.message })

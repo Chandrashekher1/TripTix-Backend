@@ -7,6 +7,7 @@ export interface IUser extends Document {
   password: string
   phone: number
   image?: string
+  isAdmin: boolean
   generateAuthToken(): string
 }
 
@@ -37,10 +38,14 @@ const UserSchema = new Schema<IUser>({
   image: {
     type: String,
   },
+  isAdmin: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 UserSchema.methods.generateAuthToken = function (): string {
-  const token = jwt.sign({ _id: this._id }, process.env.jwtPrivateKey as string)
+  const token = jwt.sign({ _id: this._id, isAdmin: this.isAdmin }, process.env.jwtPrivateKey as string)
   return token
 }
 

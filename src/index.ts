@@ -6,6 +6,7 @@ import { Server } from 'socket.io'
 import connectDB from './config/db'
 import setupRoutes from './startup/routes'
 import handleSocketConnection from './routes/socket'
+import { startLockExpiryWorker } from './services/lockExpiryWorker'
 
 const app = express()
 const server = http.createServer(app)
@@ -13,7 +14,7 @@ const server = http.createServer(app)
 const io = new Server(server, {
   cors: {
     origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'PATCH'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Authorization'],
     credentials: true,
@@ -32,15 +33,15 @@ handleSocketConnection(io)
 app.use(
   cors({
     origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'PATCH'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Authorization'],
     credentials: true,
   })
 )
 
-connectDB()
 setupRoutes(app)
+connectDB().then(() => startLockExpiryWorker(io))
 
 const PORT = process.env.PORT || 3000
 server.listen(PORT, () => {

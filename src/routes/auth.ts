@@ -22,7 +22,8 @@ router.post('/', async (req: Request, res: Response) => {
       _id: user.id,
       name: user.name,
       email: user.email,
-      phone: user.phone
+      phone: user.phone,
+      isAdmin: user.isAdmin
     })
   } catch (err) {
     const error = err as Error
