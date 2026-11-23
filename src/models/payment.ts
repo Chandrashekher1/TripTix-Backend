@@ -1,26 +1,41 @@
 import mongoose, { Document, Schema, Model, Types } from 'mongoose'
+import { IPassenger } from './booking'
 
 export interface IPayment extends Document {
-  bookinId: Types.ObjectId
   userId: Types.ObjectId
-  amount: number
+  tripId: Types.ObjectId
+  seatIds: Types.ObjectId[]
+  bookingId?: Types.ObjectId
+  amountPaise: number
+  currency: 'INR'
+  razorpayOrderId: string
+  razorpayPaymentId?: string
   status: 'pending' | 'completed' | 'failed'
-  trainsactionId: string
+  passengerDetails?: IPassenger[]
   createdAt: Date
+  updatedAt: Date
 }
 
-const PaymentSchema = new Schema<IPayment>({
-  bookinId: { type: Schema.Types.ObjectId, required: true, ref: 'Booking' },
-  userId: { type: Schema.Types.ObjectId, required: true, ref: 'users' },
-  amount: { type: Number, required: true },
-  status: {
-    type: String,
-    required: true,
-    enum: ['pending', 'completed', 'failed'],
+const PaymentSchema = new Schema<IPayment>(
+  {
+    userId: { type: Schema.Types.ObjectId, required: true, ref: 'users' },
+    tripId: { type: Schema.Types.ObjectId, required: true, ref: 'Trip' },
+    seatIds: [{ type: Schema.Types.ObjectId, required: true, ref: 'TripSeat' }],
+    bookingId: { type: Schema.Types.ObjectId, ref: 'Booking' },
+    amountPaise: { type: Number, required: true, min: 1 },
+    currency: { type: String, required: true, enum: ['INR'], default: 'INR' },
+    razorpayOrderId: { type: String, required: true, unique: true },
+    razorpayPaymentId: { type: String, unique: true, sparse: true },
+    status: { type: String, required: true, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+    passengerDetails: [
+      {
+        name: { type: String, trim: true },
+        age: { type: Number },
+        gender: { type: String, trim: true },
+      },
+    ],
   },
-  trainsactionId: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
-})
+  { timestamps: true }
+)
 
-export const Payment: Model<IPayment> = mongoose.model<IPayment>('payment', PaymentSchema)
-
+export const PaymentModel: Model<IPayment> = mongoose.model<IPayment>('payment', PaymentSchema)
