@@ -66,9 +66,13 @@ const UserSchema = new mongoose_1.Schema({
     image: {
         type: String,
     },
+    isAdmin: {
+        type: Boolean,
+        default: false,
+    },
 });
 UserSchema.methods.generateAuthToken = function () {
-    const token = jsonwebtoken_1.default.sign({ _id: this._id }, process.env.jwtPrivateKey);
+    const token = jsonwebtoken_1.default.sign({ _id: this._id, isAdmin: this.isAdmin }, process.env.jwtPrivateKey);
     return token;
 };
 exports.Users = mongoose_1.default.model('users', UserSchema);

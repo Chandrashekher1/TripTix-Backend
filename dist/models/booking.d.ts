@@ -1,17 +1,19 @@
 import { Document, Model, Types } from 'mongoose';
-interface IPassenger {
+export interface IPassenger {
     name: string;
-    age: string;
+    age: number;
     gender: string;
 }
 export interface IBooking extends Document {
     userId: Types.ObjectId;
     busId: Types.ObjectId;
+    tripId: Types.ObjectId;
     seatIds: Types.ObjectId[];
     passengerDetails: IPassenger[];
-    status: string;
+    status: 'confirmed' | 'cancelled';
+    razorpayOrderId?: string;
+    razorpayPaymentId?: string;
     createdAt: Date;
 }
 export declare const Booking: Model<IBooking>;
-export {};
 //# sourceMappingURL=booking.d.ts.map

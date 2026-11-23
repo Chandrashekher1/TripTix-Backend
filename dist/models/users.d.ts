@@ -5,6 +5,7 @@ export interface IUser extends Document {
     password: string;
     phone: number;
     image?: string;
+    isAdmin: boolean;
     generateAuthToken(): string;
 }
 export declare const Users: Model<IUser>;

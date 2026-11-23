@@ -38,15 +38,18 @@ const mongoose_1 = __importStar(require("mongoose"));
 const BookingSchema = new mongoose_1.Schema({
     userId: { type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'users' },
     busId: { type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'Buses' },
-    seatIds: [{ type: mongoose_1.Schema.Types.ObjectId, ref: 'Seat', required: true }],
+    tripId: { type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'Trip' },
+    seatIds: [{ type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'TripSeat' }],
     passengerDetails: [
         {
-            name: { type: String, required: true, lowercase: true },
-            age: { type: String, required: true, lowercase: true },
-            gender: { type: String, required: true, lowercase: true },
+            name: { type: String, required: true, lowercase: true, trim: true },
+            age: { type: Number, required: true, min: 1, max: 120 },
+            gender: { type: String, required: true, lowercase: true, trim: true },
         },
     ],
-    status: { type: String, default: 'confirmed' },
+    status: { type: String, required: true, enum: ['confirmed', 'cancelled'], default: 'confirmed' },
+    razorpayOrderId: { type: String, unique: true, sparse: true },
+    razorpayPaymentId: { type: String, unique: true, sparse: true },
     createdAt: { type: Date, default: Date.now },
 });
 exports.Booking = mongoose_1.default.model('Booking', BookingSchema);

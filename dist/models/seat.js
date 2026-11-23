@@ -37,7 +37,7 @@ exports.Seat = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const SeatSchema = new mongoose_1.Schema({
     seatNumber: { type: String, required: true },
-    status: { type: String, required: true, lowercase: true },
+    status: { type: String, lowercase: true },
     lockedUntil: { type: Date, default: null },
     seatPreference: { type: String, required: true, lowercase: true },
     busId: { type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'Buses' },
@@ -46,5 +46,6 @@ const SeatSchema = new mongoose_1.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
 });
+SeatSchema.index({ busId: 1, seatNumber: 1 }, { unique: true });
 exports.Seat = mongoose_1.default.model('Seat', SeatSchema);
 //# sourceMappingURL=seat.js.map

@@ -33,19 +33,25 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Payment = void 0;
+exports.PaymentModel = void 0;
 const mongoose_1 = __importStar(require("mongoose"));
 const PaymentSchema = new mongoose_1.Schema({
-    bookinId: { type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'Booking' },
     userId: { type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'users' },
-    amount: { type: Number, required: true },
-    status: {
-        type: String,
-        required: true,
-        enum: ['pending', 'completed', 'failed'],
-    },
-    trainsactionId: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now },
-});
-exports.Payment = mongoose_1.default.model('payment', PaymentSchema);
+    tripId: { type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'Trip' },
+    seatIds: [{ type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'TripSeat' }],
+    bookingId: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Booking' },
+    amountPaise: { type: Number, required: true, min: 1 },
+    currency: { type: String, required: true, enum: ['INR'], default: 'INR' },
+    razorpayOrderId: { type: String, required: true, unique: true },
+    razorpayPaymentId: { type: String, unique: true, sparse: true },
+    status: { type: String, required: true, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+    passengerDetails: [
+        {
+            name: { type: String, trim: true },
+            age: { type: Number },
+            gender: { type: String, trim: true },
+        },
+    ],
+}, { timestamps: true });
+exports.PaymentModel = mongoose_1.default.model('payment', PaymentSchema);
 //# sourceMappingURL=payment.js.map

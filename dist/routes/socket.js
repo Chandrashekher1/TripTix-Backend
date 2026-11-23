@@ -1,41 +1,68 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.tripRoom = void 0;
 const mongoose_1 = require("mongoose");
-const seat_1 = require("../models/seat");
+const socketAuth_1 = require("../middleware/socketAuth");
+const seatLockService_1 = require("../services/seatLockService");
+const tripRoom = (tripId) => `trip:${tripId}`;
+exports.tripRoom = tripRoom;
+const respond = (ack, response) => {
+    if (typeof ack === 'function')
+        ack(response);
+};
+const toFailure = (err) => {
+    if (err instanceof seatLockService_1.SeatLockError) {
+        return { success: false, code: err.code, message: err.message };
+    }
+    console.error('Seat socket error:', err);
+    return { success: false, code: 'INTERNAL_ERROR', message: 'Something went wrong. Please try again.' };
+};
 const handleSocketConnection = (io) => {
+    io.use(socketAuth_1.socketAuth);
     io.on('connection', (socket) => {
-        socket.on('lockSeats', async ({ busId, seatIds, userId }) => {
-            if (!mongoose_1.Types.ObjectId.isValid(userId)) {
-                console.error('Invalid userId:', userId);
-                return;
+        const userId = socket.data.user._id;
+        socket.on('joinTrip', (payload, ack) => {
+            if (typeof payload?.tripId !== 'string' || !mongoose_1.Types.ObjectId.isValid(payload.tripId)) {
+                return respond(ack, { success: false, code: 'INVALID_INPUT', message: 'Invalid tripId.' });
             }
-            await seat_1.Seat.updateMany({ _id: { $in: seatIds }, busId }, {
-                $set: {
-                    status: 'locked',
-                    userId: new mongoose_1.Types.ObjectId(userId),
-                    lockedUntil: new Date(Date.now() + 1 * 60 * 1000),
-                },
-            });
-            io.emit('seatsUpdated', { seatIds, status: 'locked', userId });
-            setTimeout(async () => {
-                await seat_1.Seat.updateMany({
-                    _id: { $in: seatIds },
-                    status: 'locked',
-                    userId: new mongoose_1.Types.ObjectId(userId),
-                    lockedUntil: { $lte: new Date() },
-                }, {
-                    $set: {
-                        status: 'available',
-                        userId: null,
-                        lockedUntil: null,
-                    },
-                });
-                io.emit('seatsUpdated', { seatIds, status: 'available' });
-            }, 5 * 60 * 1000);
+            socket.join((0, exports.tripRoom)(payload.tripId));
+            respond(ack, { success: true });
         });
-        socket.on('unlockSeats', async ({ seatIds }) => {
-            await seat_1.Seat.updateMany({ _id: { $in: seatIds } }, { $set: { status: 'available', userId: null, lockedUntil: null } });
-            io.emit('seatsUpdated', { seatIds, status: 'available' });
+        socket.on('lockSeats', async (payload, ack) => {
+            try {
+                const result = await (0, seatLockService_1.lockSeats)(payload?.tripId, payload?.seatIds, userId);
+                io.to((0, exports.tripRoom)(payload.tripId)).emit('seatsUpdated', {
+                    tripId: payload.tripId,
+                    seatIds: result.seatIds,
+                    status: 'locked',
+                    userId,
+                });
+                respond(ack, {
+                    success: true,
+                    lockId: result.lockId,
+                    lockedUntil: result.lockedUntil,
+                    seatIds: result.seatIds,
+                });
+            }
+            catch (err) {
+                respond(ack, toFailure(err));
+            }
+        });
+        socket.on('unlockSeats', async (payload, ack) => {
+            try {
+                const released = await (0, seatLockService_1.unlockSeats)(payload?.tripId, payload?.seatIds, userId);
+                if (released.length > 0) {
+                    io.to((0, exports.tripRoom)(payload.tripId)).emit('seatsUpdated', {
+                        tripId: payload.tripId,
+                        seatIds: released,
+                        status: 'available',
+                    });
+                }
+                respond(ack, { success: true, seatIds: released });
+            }
+            catch (err) {
+                respond(ack, toFailure(err));
+            }
         });
         socket.on('disconnect', () => {
             console.log('User disconnected: ' + socket.id);

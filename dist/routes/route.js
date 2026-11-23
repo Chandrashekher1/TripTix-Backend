@@ -8,6 +8,16 @@ const auth_1 = __importDefault(require("../middleware/auth"));
 const admin_1 = __importDefault(require("../middleware/admin"));
 const routes_1 = require("../models/routes");
 const router = express_1.default.Router();
+router.get('/all', async (_req, res) => {
+    try {
+        const routes = await routes_1.Routes.find().sort({ origin: 1, destination: 1 });
+        return res.json({ success: true, data: routes });
+    }
+    catch (err) {
+        const error = err;
+        return res.status(500).json({ success: false, message: 'Internal Server error.', error: error.message });
+    }
+});
 // GET / — find route by origin and destination
 router.get('/', async (req, res) => {
     try {
@@ -19,6 +29,16 @@ router.get('/', async (req, res) => {
         if (!route)
             return res.status(404).json({ message: 'No routes found.' });
         return res.json({ success: true, data: route });
+    }
+    catch (err) {
+        const error = err;
+        return res.status(500).json({ success: false, message: 'Internal Server error.', error: error.message });
+    }
+});
+router.get('/admin/all', [auth_1.default, admin_1.default], async (_req, res) => {
+    try {
+        const routes = await routes_1.Routes.find().sort({ origin: 1, destination: 1 });
+        return res.json({ success: true, data: routes });
     }
     catch (err) {
         const error = err;

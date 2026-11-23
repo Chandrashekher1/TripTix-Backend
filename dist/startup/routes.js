@@ -10,15 +10,21 @@ const buses_1 = __importDefault(require("../routes/buses"));
 const booking_1 = __importDefault(require("../routes/booking"));
 const seat_1 = __importDefault(require("../routes/seat"));
 const route_1 = __importDefault(require("../routes/route"));
+const trip_1 = __importDefault(require("../routes/trip"));
 const users_1 = __importDefault(require("../routes/users"));
 const auth_1 = __importDefault(require("../routes/auth"));
 function default_1(app) {
-    app.use(express_1.default.json());
+    app.use(express_1.default.json({
+        verify: (req, _res, buf) => {
+            req.rawBody = buf;
+        },
+    }));
     app.use(express_1.default.urlencoded({ extended: true }));
     app.use('/api/v1/user', users_1.default);
     app.use('/api/v1/login', auth_1.default);
     app.use('/api/v1/route', route_1.default);
     app.use('/api/v1/seat', seat_1.default);
+    app.use('/api/v1/trip', trip_1.default);
     app.use('/api/v1/booking', booking_1.default);
     app.use('/api/v1/bus', buses_1.default);
     app.use('/api/v1/payment', payment_1.default);

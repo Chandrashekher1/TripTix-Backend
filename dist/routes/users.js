@@ -54,6 +54,7 @@ router.post('/signup', async (req, res) => {
         return res.status(201).header('Authorization', token).json({
             success: true,
             token,
+            isAdmin: user.isAdmin,
             message: 'User registered successfully.',
         });
     }
