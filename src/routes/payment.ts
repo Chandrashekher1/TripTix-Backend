@@ -154,17 +154,21 @@ router.post('/create-order', auth, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'seatIds must be a non-empty array of valid IDs.' })
     }
 
-    // Verify trip exists
-    const trip = await Trip.findById(tripId)
+    // Verify trip exists (populate bus & route for Razorpay notes)
+    const trip = await Trip.findById(tripId).populate({
+      path: 'busId',
+      select: 'operator busNumber routesId',
+      populate: { path: 'routesId', select: 'origin destination' },
+    })
     if (!trip) {
       return res.status(404).json({ success: false, message: 'Trip not found.' })
     }
 
-    // Verify seats belong to this trip
+    // Verify seats belong to this trip (populate physical seatNumber for Razorpay notes)
     const tripSeats = await TripSeat.find({
       _id: { $in: seatIds.map((id) => new Types.ObjectId(id)) },
       tripId: new Types.ObjectId(tripId),
-    })
+    }).populate('seatId', 'seatNumber')
 
     if (tripSeats.length !== seatIds.length) {
       return res.status(400).json({ success: false, message: 'One or more seats do not belong to this trip.' })
@@ -224,11 +228,28 @@ router.post('/create-order', auth, async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // 3. Otherwise create a new Razorpay Order
+    // 3. Otherwise create a new Razorpay Order (include bus & seat metadata in notes)
+    const bus = trip.busId as unknown as {
+      operator?: string
+      busNumber?: string
+      routesId?: { origin?: string; destination?: string }
+    } | null
+
+    const seatNumbers = tripSeats.map(
+      (ts, idx) => (ts.seatId as unknown as { seatNumber?: string } | null)?.seatNumber || `Seat ${idx + 1}`
+    )
+
     const options = {
       amount: amountPaise,
       currency: 'INR',
       receipt: `rcpt_${Date.now()}_${userId.toString().slice(-4)}`,
+      notes: {
+        tripId: trip._id.toString(),
+        operator: bus?.operator || '',
+        busNumber: bus?.busNumber || '',
+        route: bus?.routesId ? `${bus.routesId.origin} to ${bus.routesId.destination}` : '',
+        seats: seatNumbers.join(', '),
+      },
     }
 
     const order = await razorpay.orders.create(options)

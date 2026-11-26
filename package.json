@@ -31,7 +31,9 @@
     "multer-storage-cloudinary": "^4.0.0",
     "nodemon": "^3.1.14",
     "openai": "^5.9.0",
+    "pdfkit": "^0.21.0",
     "razorpay": "^2.9.6",
+    "resend": "^6.40.0",
     "salt": "^0.5.5",
     "socket.io": "^4.8.1",
     "websocket": "^1.0.35"
@@ -43,6 +45,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.3.0",
     "@types/node": "^26.6.6",
+    "@types/pdfkit": "^0.17.7",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
