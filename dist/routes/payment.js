@@ -146,16 +146,20 @@ router.post('/create-order', auth_1.default, async (req, res) => {
         if (!Array.isArray(seatIds) || seatIds.length === 0 || !seatIds.every((id) => (0, mongoose_1.isValidObjectId)(id))) {
             return res.status(400).json({ success: false, message: 'seatIds must be a non-empty array of valid IDs.' });
         }
-        // Verify trip exists
-        const trip = await trip_1.Trip.findById(tripId);
+        // Verify trip exists (populate bus & route for Razorpay notes)
+        const trip = await trip_1.Trip.findById(tripId).populate({
+            path: 'busId',
+            select: 'operator busNumber routesId',
+            populate: { path: 'routesId', select: 'origin destination' },
+        });
         if (!trip) {
             return res.status(404).json({ success: false, message: 'Trip not found.' });
         }
-        // Verify seats belong to this trip
+        // Verify seats belong to this trip (populate physical seatNumber for Razorpay notes)
         const tripSeats = await tripSeat_1.TripSeat.find({
             _id: { $in: seatIds.map((id) => new mongoose_1.Types.ObjectId(id)) },
             tripId: new mongoose_1.Types.ObjectId(tripId),
-        });
+        }).populate('seatId', 'seatNumber');
         if (tripSeats.length !== seatIds.length) {
             return res.status(400).json({ success: false, message: 'One or more seats do not belong to this trip.' });
         }
@@ -205,11 +209,20 @@ router.post('/create-order', auth_1.default, async (req, res) => {
                 console.warn('Could not fetch existing Razorpay order, proceeding to create a new one:', fetchErr);
             }
         }
-        // 3. Otherwise create a new Razorpay Order
+        // 3. Otherwise create a new Razorpay Order (include bus & seat metadata in notes)
+        const bus = trip.busId;
+        const seatNumbers = tripSeats.map((ts, idx) => ts.seatId?.seatNumber || `Seat ${idx + 1}`);
         const options = {
             amount: amountPaise,
             currency: 'INR',
             receipt: `rcpt_${Date.now()}_${userId.toString().slice(-4)}`,
+            notes: {
+                tripId: trip._id.toString(),
+                operator: bus?.operator || '',
+                busNumber: bus?.busNumber || '',
+                route: bus?.routesId ? `${bus.routesId.origin} to ${bus.routesId.destination}` : '',
+                seats: seatNumbers.join(', '),
+            },
         };
         const order = await razorpay_1.default.orders.create(options);
         // Save pending Payment in database with passengerDetails for webhook resilience
