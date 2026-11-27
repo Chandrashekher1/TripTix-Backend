@@ -11,6 +11,8 @@ const storage_1 = require("../config/storage");
 const buses_1 = __importDefault(require("../models/buses"));
 const seat_1 = require("../models/seat");
 const routes_1 = require("../models/routes");
+const trip_1 = require("../models/trip");
+const booking_1 = require("../models/booking");
 const router = express_1.default.Router();
 function normalizeBoolean(value) {
     if (value === true || value === 'true')
@@ -19,6 +21,147 @@ function normalizeBoolean(value) {
         return false;
     return undefined;
 }
+// GET /track — search bus info and schedule by query (busNumber or bookingId)
+router.get('/track', async (req, res) => {
+    try {
+        const query = (req.query.q || req.query.query || '').trim();
+        if (!query) {
+            return res.status(400).json({ success: false, message: 'Please provide a bus number or booking ID to track.' });
+        }
+        let bookingDoc = null;
+        let busDoc = null;
+        let tripDoc = null;
+        // 1. Try finding booking by ID or Order ID or invoice short ID if query matches
+        if ((0, mongoose_1.isValidObjectId)(query)) {
+            bookingDoc = await booking_1.Booking.findById(query)
+                .populate({
+                path: 'busId',
+                populate: { path: 'routesId' },
+            })
+                .populate('tripId')
+                .populate({
+                path: 'seatIds',
+                populate: { path: 'seatId', select: 'seatNumber seatPreference' },
+            });
+        }
+        if (!bookingDoc) {
+            // Check if it's an order ID or INV short ID
+            bookingDoc = await booking_1.Booking.findOne({
+                $or: [
+                    { razorpayOrderId: query },
+                    { razorpayPaymentId: query },
+                    ...(query.toUpperCase().startsWith('INV-')
+                        ? [{ _id: { $regex: query.replace(/^INV-/i, ''), $options: 'i' } }]
+                        : []),
+                ],
+            })
+                .populate({
+                path: 'busId',
+                populate: { path: 'routesId' },
+            })
+                .populate('tripId')
+                .populate({
+                path: 'seatIds',
+                populate: { path: 'seatId', select: 'seatNumber seatPreference' },
+            });
+        }
+        if (bookingDoc) {
+            busDoc = bookingDoc.busId;
+            tripDoc = bookingDoc.tripId;
+        }
+        else {
+            // 2. Search bus by bus number (case-insensitive)
+            busDoc = await buses_1.default.findOne({
+                busNumber: { $regex: new RegExp(`^${query}$`, 'i') },
+            }).populate('routesId');
+            if (!busDoc) {
+                // Also try partial match on busNumber or operator if exact didn't match
+                busDoc = await buses_1.default.findOne({
+                    $or: [
+                        { busNumber: { $regex: query, $options: 'i' } },
+                        { operator: { $regex: query, $options: 'i' } },
+                    ],
+                }).populate('routesId');
+            }
+            if (busDoc) {
+                // Find upcoming or most recent trip for this bus
+                tripDoc = await trip_1.Trip.findOne({ busId: busDoc._id }).sort({ departureDate: -1 });
+            }
+        }
+        if (!busDoc) {
+            return res.status(404).json({
+                success: false,
+                message: `No bus or booking found matching "${query}". Please check the bus number or booking ID.`,
+            });
+        }
+        const route = busDoc.routesId;
+        // Calculate trip status based on schedule
+        let departureTime = busDoc.dep_time;
+        let arrivalTime = busDoc.arrivalTime;
+        let journeyDate = tripDoc?.departureDate || busDoc.date || new Date();
+        let journeyStatus = 'scheduled';
+        const now = new Date();
+        if (tripDoc?.departureDate) {
+            const depDate = new Date(tripDoc.departureDate);
+            if (now < depDate) {
+                journeyStatus = 'scheduled';
+            }
+            else {
+                journeyStatus = 'on_time';
+            }
+        }
+        const trackingResult = {
+            type: bookingDoc ? 'booking' : 'bus',
+            booking: bookingDoc
+                ? {
+                    bookingId: bookingDoc._id,
+                    status: bookingDoc.status,
+                    createdAt: bookingDoc.createdAt,
+                    passengerCount: bookingDoc.passengerDetails?.length || 0,
+                    seats: (bookingDoc.seatIds || []).map((s) => s.seatId?.seatNumber || 'Seat'),
+                    cancelledSeats: bookingDoc.cancelledSeats || [],
+                }
+                : null,
+            bus: {
+                _id: busDoc._id,
+                busNumber: busDoc.busNumber,
+                operator: busDoc.operator,
+                busType: busDoc.busType,
+                rating: busDoc.rating || 4.2,
+                totalSeats: busDoc.totalSeat,
+                price: busDoc.price,
+                amenities: {
+                    isAc: Boolean(busDoc.isAc),
+                    isSleeper: Boolean(busDoc.isSleeper),
+                    isSeater: Boolean(busDoc.isSeater),
+                    isWifi: Boolean(busDoc.isWifi),
+                },
+                depTime: departureTime,
+                arrivalTime: arrivalTime,
+            },
+            route: route
+                ? {
+                    origin: route.origin,
+                    destination: route.destination,
+                    distance: route.distance,
+                }
+                : null,
+            trip: tripDoc
+                ? {
+                    tripId: tripDoc._id,
+                    departureDate: tripDoc.departureDate,
+                    journeyStatus,
+                }
+                : null,
+        };
+        return res.json({ success: true, data: trackingResult });
+    }
+    catch (err) {
+        const error = err;
+        console.error('Error tracking bus:', error);
+        return res.status(500).json({ success: false, message: 'Server error while fetching bus tracking info.' });
+    }
+});
 // GET /topRated — all buses with routes populated
 router.get('/topRated', async (_req, res) => {
     try {
