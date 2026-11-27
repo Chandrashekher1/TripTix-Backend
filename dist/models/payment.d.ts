@@ -1,5 +1,11 @@
 import { Document, Model, Types } from 'mongoose';
 import { IPassenger } from './booking';
+export interface IRefundLog {
+    razorpayRefundId: string;
+    amountPaise: number;
+    seatId: Types.ObjectId;
+    createdAt: Date;
+}
 export interface IPayment extends Document {
     userId: Types.ObjectId;
     tripId: Types.ObjectId;
@@ -9,7 +15,9 @@ export interface IPayment extends Document {
     currency: 'INR';
     razorpayOrderId: string;
     razorpayPaymentId?: string;
-    status: 'pending' | 'completed' | 'failed';
+    status: 'pending' | 'completed' | 'failed' | 'partially_refunded' | 'refunded';
+    refundedAmountPaise: number;
+    refunds: IRefundLog[];
     passengerDetails?: IPassenger[];
     createdAt: Date;
     updatedAt: Date;

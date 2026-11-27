@@ -3,6 +3,15 @@ export interface IPassenger {
     name: string;
     age: number;
     gender: string;
+    seatId?: Types.ObjectId;
+}
+export interface ICancelledSeat {
+    seatId: Types.ObjectId;
+    seatNumber: string;
+    passengerName: string;
+    refundAmountPaise: number;
+    razorpayRefundId: string;
+    cancelledAt: Date;
 }
 export interface IBooking extends Document {
     userId: Types.ObjectId;
@@ -10,7 +19,8 @@ export interface IBooking extends Document {
     tripId: Types.ObjectId;
     seatIds: Types.ObjectId[];
     passengerDetails: IPassenger[];
-    status: 'confirmed' | 'cancelled';
+    cancelledSeats: ICancelledSeat[];
+    status: 'confirmed' | 'partially_cancelled' | 'cancelled';
     razorpayOrderId?: string;
     razorpayPaymentId?: string;
     createdAt: Date;

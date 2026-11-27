@@ -4,6 +4,16 @@ export interface IPassenger {
   name: string
   age: number
   gender: string
+  seatId?: Types.ObjectId
+}
+
+export interface ICancelledSeat {
+  seatId: Types.ObjectId
+  seatNumber: string
+  passengerName: string
+  refundAmountPaise: number
+  razorpayRefundId: string
+  cancelledAt: Date
 }
 
 export interface IBooking extends Document {
@@ -12,7 +22,8 @@ export interface IBooking extends Document {
   tripId: Types.ObjectId
   seatIds: Types.ObjectId[]
   passengerDetails: IPassenger[]
-  status: 'confirmed' | 'cancelled'
+  cancelledSeats: ICancelledSeat[]
+  status: 'confirmed' | 'partially_cancelled' | 'cancelled'
   razorpayOrderId?: string
   razorpayPaymentId?: string
   createdAt: Date
@@ -28,9 +39,25 @@ const BookingSchema = new Schema<IBooking>({
       name: { type: String, required: true, lowercase: true, trim: true },
       age: { type: Number, required: true, min: 1, max: 120 },
       gender: { type: String, required: true, lowercase: true, trim: true },
+      seatId: { type: Schema.Types.ObjectId, ref: 'TripSeat' },
     },
   ],
-  status: { type: String, required: true, enum: ['confirmed', 'cancelled'], default: 'confirmed' },
+  cancelledSeats: [
+    {
+      seatId: { type: Schema.Types.ObjectId, required: true, ref: 'TripSeat' },
+      seatNumber: { type: String, required: true },
+      passengerName: { type: String, required: true },
+      refundAmountPaise: { type: Number, required: true },
+      razorpayRefundId: { type: String, required: true },
+      cancelledAt: { type: Date, default: Date.now },
+    },
+  ],
+  status: {
+    type: String,
+    required: true,
+    enum: ['confirmed', 'partially_cancelled', 'cancelled'],
+    default: 'confirmed',
+  },
   razorpayOrderId: { type: String, unique: true, sparse: true },
   razorpayPaymentId: { type: String, unique: true, sparse: true },
   createdAt: { type: Date, default: Date.now },

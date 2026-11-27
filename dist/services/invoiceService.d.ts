@@ -1,6 +1,15 @@
 export interface InvoiceSeat {
+    seatId: string;
     seatNumber: string;
     seatPreference: string;
+    isCancelled: boolean;
+}
+export interface InvoiceCancelledSeat {
+    seatNumber: string;
+    passengerName: string;
+    refundAmountInr: number;
+    razorpayRefundId: string;
+    cancelledAt: Date;
 }
 export interface InvoiceData {
     invoiceNumber: string;
@@ -34,11 +43,15 @@ export interface InvoiceData {
         name: string;
         age: number;
         gender: string;
+        isCancelled?: boolean;
     }[];
+    cancelledSeats: InvoiceCancelledSeat[];
     payment: {
         razorpayOrderId: string;
         razorpayPaymentId: string;
         amountInr: number;
+        refundedAmountInr: number;
+        netAmountInr: number;
         currency: string;
         status: string;
     };

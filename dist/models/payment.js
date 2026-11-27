@@ -44,7 +44,21 @@ const PaymentSchema = new mongoose_1.Schema({
     currency: { type: String, required: true, enum: ['INR'], default: 'INR' },
     razorpayOrderId: { type: String, required: true, unique: true },
     razorpayPaymentId: { type: String, unique: true, sparse: true },
-    status: { type: String, required: true, enum: ['pending', 'completed', 'failed'], default: 'pending' },
+    status: {
+        type: String,
+        required: true,
+        enum: ['pending', 'completed', 'failed', 'partially_refunded', 'refunded'],
+        default: 'pending',
+    },
+    refundedAmountPaise: { type: Number, default: 0 },
+    refunds: [
+        {
+            razorpayRefundId: { type: String, required: true },
+            amountPaise: { type: Number, required: true },
+            seatId: { type: mongoose_1.Schema.Types.ObjectId, required: true, ref: 'TripSeat' },
+            createdAt: { type: Date, default: Date.now },
+        },
+    ],
     passengerDetails: [
         {
             name: { type: String, trim: true },

@@ -42,16 +42,37 @@ async function getBookingInvoiceData(bookingId, requesterId, isAdmin = false) {
     const bus = booking.busId;
     const trip = booking.tripId;
     const tripSeats = (booking.seatIds || []);
-    const seats = tripSeats.map((ts, idx) => ({
-        seatNumber: ts.seatId?.seatNumber || `Seat ${idx + 1}`,
-        seatPreference: ts.seatId?.seatPreference || 'Standard',
+    const cancelledMap = new Map();
+    for (const cs of booking.cancelledSeats || []) {
+        cancelledMap.set(cs.seatId.toString(), cs);
+    }
+    const seats = tripSeats.map((ts, idx) => {
+        const tsId = ts._id ? ts._id.toString() : '';
+        const isCancelled = cancelledMap.has(tsId);
+        return {
+            seatId: tsId,
+            seatNumber: ts.seatId?.seatNumber || `Seat ${idx + 1}`,
+            seatPreference: ts.seatId?.seatPreference || 'Standard',
+            isCancelled,
+        };
+    });
+    const cancelledSeats = (booking.cancelledSeats || []).map((cs) => ({
+        seatNumber: cs.seatNumber,
+        passengerName: cs.passengerName,
+        refundAmountInr: cs.refundAmountPaise / 100,
+        razorpayRefundId: cs.razorpayRefundId,
+        cancelledAt: cs.cancelledAt,
     }));
     const paymentDoc = await payment_1.PaymentModel.findOne({
         $or: [{ bookingId: booking._id }, ...(booking.razorpayOrderId ? [{ razorpayOrderId: booking.razorpayOrderId }] : [])],
     }).lean();
-    const amountInr = paymentDoc
+    const originalAmountInr = paymentDoc
         ? paymentDoc.amountPaise / 100
         : (bus?.price || 0) * Math.max(seats.length, 1);
+    const refundedAmountInr = paymentDoc && paymentDoc.refundedAmountPaise
+        ? paymentDoc.refundedAmountPaise / 100
+        : cancelledSeats.reduce((acc, curr) => acc + curr.refundAmountInr, 0);
+    const netAmountInr = Math.max(0, originalAmountInr - refundedAmountInr);
     const shortId = booking._id.toString().slice(-8).toUpperCase();
     return {
         invoiceNumber: `INV-${shortId}`,
@@ -81,15 +102,22 @@ async function getBookingInvoiceData(bookingId, requesterId, isAdmin = false) {
         },
         departureDate: trip?.departureDate || null,
         seats,
-        passengers: (booking.passengerDetails || []).map((p) => ({
-            name: p.name,
-            age: Number(p.age),
-            gender: p.gender,
-        })),
+        passengers: (booking.passengerDetails || []).map((p, idx) => {
+            const s = seats[idx];
+            return {
+                name: p.name,
+                age: Number(p.age),
+                gender: p.gender,
+                isCancelled: s ? s.isCancelled : false,
+            };
+        }),
+        cancelledSeats,
         payment: {
             razorpayOrderId: booking.razorpayOrderId || paymentDoc?.razorpayOrderId || 'N/A',
             razorpayPaymentId: booking.razorpayPaymentId || paymentDoc?.razorpayPaymentId || 'N/A',
-            amountInr,
+            amountInr: originalAmountInr,
+            refundedAmountInr,
+            netAmountInr,
             currency: paymentDoc?.currency || 'INR',
             status: paymentDoc?.status || 'completed',
         },
@@ -119,7 +147,10 @@ function generateInvoicePdfBuffer(data) {
         doc.on('error', (err) => reject(err));
         const pageWidth = doc.page.width - 96;
         // Header Banner
-        doc.rect(48, 40, pageWidth, 68).fill('#059468');
+        const isCancelled = data.status === 'cancelled';
+        const isPartiallyCancelled = data.status === 'partially_cancelled';
+        const bannerColor = isCancelled ? '#dc2626' : isPartiallyCancelled ? '#d97706' : '#059468';
+        doc.rect(48, 40, pageWidth, 68).fill(bannerColor);
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(22).text('TripTix', 64, 54);
         doc.font('Helvetica').fontSize(10).text('E-TICKET & TAX INVOICE', 64, 82);
         doc
@@ -129,7 +160,7 @@ function generateInvoicePdfBuffer(data) {
         doc
             .font('Helvetica')
             .fontSize(9)
-            .text(`Status: ${data.status.toUpperCase()}`, 360, 74, { width: 170, align: 'right' });
+            .text(`Status: ${data.status.replace('_', ' ').toUpperCase()}`, 360, 74, { width: 170, align: 'right' });
         doc
             .text(`Issued: ${formatDate(data.bookedAt)}`, 360, 88, { width: 170, align: 'right' });
         doc.fillColor('#111827');
@@ -161,40 +192,58 @@ function generateInvoicePdfBuffer(data) {
         doc.fillColor('#111827').font('Helvetica-Bold').fontSize(9.5);
         doc.text('#', 58, y + 7);
         doc.text('Passenger Name', 84, y + 7);
-        doc.text('Age', 250, y + 7);
-        doc.text('Gender', 295, y + 7);
-        doc.text('Seat No.', 370, y + 7);
-        doc.text('Preference', 445, y + 7);
+        doc.text('Age', 230, y + 7);
+        doc.text('Gender', 270, y + 7);
+        doc.text('Seat No.', 335, y + 7);
+        doc.text('Status', 410, y + 7);
         y += 24;
         const rowCount = Math.max(data.passengers.length, data.seats.length);
         doc.font('Helvetica').fontSize(9.5).fillColor('#374151');
         for (let i = 0; i < rowCount; i++) {
             const p = data.passengers[i];
             const s = data.seats[i];
+            const isCancelledSeat = s?.isCancelled || p?.isCancelled;
             doc.text(String(i + 1), 58, y + 7);
-            doc.text(p ? titleCase(p.name) : '-', 84, y + 7, { width: 155 });
-            doc.text(p ? String(p.age) : '-', 250, y + 7);
-            doc.text(p ? titleCase(p.gender) : '-', 295, y + 7);
-            doc.font('Helvetica-Bold').text(s ? s.seatNumber : '-', 370, y + 7);
-            doc.font('Helvetica').text(s ? titleCase(s.seatPreference) : '-', 445, y + 7);
+            doc.text(p ? titleCase(p.name) : '-', 84, y + 7, { width: 140 });
+            doc.text(p ? String(p.age) : '-', 230, y + 7);
+            doc.text(p ? titleCase(p.gender) : '-', 270, y + 7);
+            doc.font('Helvetica-Bold').text(s ? s.seatNumber : '-', 335, y + 7);
+            if (isCancelledSeat) {
+                doc.font('Helvetica-Bold').fillColor('#dc2626').text('CANCELLED', 410, y + 7);
+            }
+            else {
+                doc.font('Helvetica-Bold').fillColor('#059468').text('ACTIVE', 410, y + 7);
+            }
+            doc.font('Helvetica').fillColor('#374151');
             y += 22;
             doc.moveTo(48, y).lineTo(48 + pageWidth, y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
         }
         y += 20;
-        // Fare Summary Box
-        const summaryWidth = 230;
+        // Fare & Refund Summary Box
+        const hasRefund = data.payment.refundedAmountInr > 0;
+        const summaryHeight = hasRefund ? 104 : 72;
+        const summaryWidth = 250;
         const summaryX = 48 + pageWidth - summaryWidth;
-        doc.roundedRect(summaryX, y, summaryWidth, 72, 6).fillAndStroke('#f9fafb', '#e5e7eb');
+        doc.roundedRect(summaryX, y, summaryWidth, summaryHeight, 6).fillAndStroke('#f9fafb', '#e5e7eb');
         doc.fillColor('#374151').font('Helvetica').fontSize(9.5);
         doc.text(`Seats (${data.seats.length} x INR ${data.bus.pricePerSeat})`, summaryX + 14, y + 14);
-        doc.text(`INR ${(data.bus.pricePerSeat * data.seats.length).toFixed(2)}`, summaryX + 120, y + 14, {
-            width: 96,
+        doc.text(`INR ${data.payment.amountInr.toFixed(2)}`, summaryX + 130, y + 14, {
+            width: 106,
             align: 'right',
         });
-        doc.moveTo(summaryX + 14, y + 36).lineTo(summaryX + summaryWidth - 14, y + 36).strokeColor('#d1d5db').stroke();
+        let currentBoxY = y + 36;
+        if (hasRefund) {
+            doc.fillColor('#dc2626').text(`Refunded (${data.cancelledSeats.length} seat(s))`, summaryX + 14, currentBoxY);
+            doc.text(`- INR ${data.payment.refundedAmountInr.toFixed(2)}`, summaryX + 130, currentBoxY, {
+                width: 106,
+                align: 'right',
+            });
+            currentBoxY += 22;
+        }
+        doc.moveTo(summaryX + 14, currentBoxY).lineTo(summaryX + summaryWidth - 14, currentBoxY).strokeColor('#d1d5db').stroke();
         doc.fillColor('#111827').font('Helvetica-Bold').fontSize(11);
-        doc.text('Total Paid', summaryX + 14, y + 46);
-        doc.fillColor('#059468').text(`${data.payment.currency} ${data.payment.amountInr.toFixed(2)}`, summaryX + 110, y + 46, { width: 106, align: 'right' });
+        doc.text('Net Total', summaryX + 14, currentBoxY + 10);
+        doc.fillColor('#059468').text(`${data.payment.currency} ${data.payment.netAmountInr.toFixed(2)}`, summaryX + 120, currentBoxY + 10, { width: 116, align: 'right' });
         // Footer
         doc
             .fillColor('#6b7280')
